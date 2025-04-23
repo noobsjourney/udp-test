@@ -8,6 +8,7 @@ class UiFactoryMeta(type):
         new_class = super().__new__(cls, name, bases, attrs)
         if name != 'UiFactory':
             UiFactory.register_component(new_class)
+            UiFactory._current_component = new_class
         return new_class
 
 class UiFactory(QObject, metaclass=UiFactoryMeta):
