@@ -92,6 +92,7 @@ class TCPServer:
         try:
             self.sock.bind((host, port))
             self.sock.listen(backlog)
+            self.sock.settimeout(5) # 设置超时时间为5秒
             return True
         except OSError:
             return False
