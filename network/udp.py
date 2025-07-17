@@ -15,7 +15,6 @@ logger = logging.getLogger("UDPProtocol")
 
 class UDPPacket:
     """UDP数据包基类
-
     定义所有UDP数据包的基本结构和通用方法，包括包头格式、校验和计算等。
     支持数据包的构建、解析和校验功能，是其他具体数据包类型的父类。
     """
@@ -749,7 +748,7 @@ class UDPTransmitter(QObject):
         
         logger.info(f"Data assembly complete for {recv_key}, size: {len(data)}")
     
-    def _send_loop(self):
+    def _send_loop(self):   
         """发送循环 - 处理发送队列和重传
 
         在独立线程中运行，处理发送队列中的数据发送任务，并定期检查超时未确认的数据包
