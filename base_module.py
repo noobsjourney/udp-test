@@ -10,7 +10,16 @@ class BaseModule(QObject, metaclass=ABCMetaQ):
     """模块基类（强制子类实现模块名称）
     -属性：
         _module_manespace: 模块命名空间，用于存储模块名称
+        _class_id_registry: 类ID注册表，用于存储类与ID的映射关系
+        _name_to_id_registry: 模块名称ID注册表，用于存储模块名称与ID的映射关系
+        _next_id: 下一个可用ID
     -方法：
+        get_module_id: 获取模块ID（基类实现禁止重写）
+        get_class_by_id: 通过ID获取类（类方法）
+        get_id_by_name: 通过模块名称获取ID（类方法）
+        get_name_by_id: 通过ID获取模块名称（类方法）
+        get_forward_dict: 获取正向字典 {ID: 模块名称}（类方法）
+        get_reverse_dict: 获取反向字典 {模块名称: ID}（类方法）
         get_module_name: 获取模块名称（基类实现禁止重写）
         check_module_name: 检查模块名称是否重名
         __init_subclass__: 子类初始化时检查模块名称是否重名
@@ -35,7 +44,9 @@ class BaseModule(QObject, metaclass=ABCMetaQ):
                     self.module_name_A = self.testModuleA.get_module_name()
     """
     _module_manespace = weakref.WeakValueDictionary()  # 弱引用注册表
-
+    _class_id_registry = {}  # {ID: 类}
+    _name_to_id_registry = {}  # {模块名称: ID}
+    _next_id = 1  # 下一个可用ID
 
     @property
     @abstractmethod
@@ -57,6 +68,39 @@ class BaseModule(QObject, metaclass=ABCMetaQ):
     def get_module_names(self) -> list:
         """获取所有模块名称（基类实现禁止重写）"""
         return list(self._module_manespace.keys())
+    @classmethod
+    @final
+    def get_class_by_id(cls, id_: int) -> type:
+        """通过ID获取类"""
+        return cls._class_id_registry.get(id_)
+    
+    @classmethod
+    @final
+    def get_id_by_name(cls, name: str) -> int:
+        """通过模块名称获取ID"""
+        return cls._name_to_id_registry.get(name)
+    
+    @classmethod
+    @final
+    def get_name_by_id(cls, id_: int) -> str:
+        """通过ID获取模块名称"""
+        if class_ := cls._class_id_registry.get(id_):
+            return class_.module_name
+        return None
+    
+    @classmethod
+    @final
+    def get_forward_dict(cls) -> dict:
+        """获取正向字典 {ID: 模块名称}"""
+        return {id_: class_.module_name 
+                for id_, class_ in cls._class_id_registry.items()}
+    
+    @classmethod
+    @final
+    def get_reverse_dict(cls) -> dict:
+        """获取反向字典 {模块名称: ID}"""
+        return cls._name_to_id_registry.copy()
+
     @final
     def __init_subclass__(cls, **kwargs):
         """该方法在子类完成定义后被调用，导入文件时会自动执行"""
@@ -71,5 +115,11 @@ class BaseModule(QObject, metaclass=ABCMetaQ):
             raise ValueError(f"模块名称 '{cls.module_name}' 已被 {cls._module_manespace[cls.module_name]} 占用")
         cls._module_manespace[cls.module_name] = cls  # 存储类引用
 
+        if cls.module_name not in cls._name_to_id_registry:
+            new_id = cls._next_id
+            cls._next_id += 1
+            
+            cls._class_id_registry[new_id] = cls
+            cls._name_to_id_registry[cls.module_name] = new_id
 
 

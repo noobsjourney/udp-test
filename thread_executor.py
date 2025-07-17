@@ -72,6 +72,36 @@ class TaskWrapper(QRunnable):
                 return True
             return False
 
+class DaemonTask:
+    """守护任务包装器，用于管理周期性执行的任务"""
+    def __init__(self, task_id: str, fn: Callable, interval: float, *args, **kwargs):
+        self.task_id = task_id
+        self.fn = fn
+        self.interval = interval
+        self.args = args
+        self.kwargs = kwargs
+        self.stop_event = threading.Event()
+        self.last_execution = time.time()
+        
+    def run(self):
+        """守护任务执行循环"""
+        while not self.stop_event.is_set():
+            try:
+                # 执行用户函数
+                result = self.fn(*self.args, **self.kwargs)
+                self.last_execution = time.time()
+                # 可以添加结果处理逻辑
+            except Exception as e:
+                error_msg = f"Daemon task error: {str(e)}"
+                traceback.print_exc()
+                # 可以添加错误处理逻辑
+            
+            # 等待直到下一个执行周期或停止事件
+            self.stop_event.wait(self.interval)
+    
+    def stop(self):
+        """停止守护任务"""
+        self.stop_event.set()
 
 class ThreadExecutor(BaseModule):
     """独立线程池管理系统
@@ -92,9 +122,12 @@ class ThreadExecutor(BaseModule):
         # 线程池配置 {name: (type, instance)}
         self._pools: Dict[str, Tuple[str, Union[QThreadPool, ThreadPoolExecutor]]] = {}
         # 任务注册表 {task_id: (pool_name, task)}
-        self._task_registry: Dict[str, Tuple[str, Union[TaskWrapper, Future]]] = {}
+        self._task_registry: Dict[str, Tuple[str, Union[TaskWrapper, Future, DaemonTask]]] = {}
         self._registry_lock = threading.RLock()
         self._init_default_pools()
+        self._daemon_tasks: Dict[str, DaemonTask] = {}  # 守护任务注册表
+        self._daemon_lock = threading.RLock()  # 守护任务专用锁
+    
     @property
     def module_name(self) -> str:
         return "thread"
@@ -102,8 +135,9 @@ class ThreadExecutor(BaseModule):
         """初始化默认线程池"""
         print("初始化默认线程池")
         self.create_pool("qt_default", "qt", max_threads=QThreadPool.globalInstance().maxThreadCount())
-        self.create_pool("io_default", "standard", max_workers=8)
+        self.create_pool("io_default", "standard", max_workers=8)#串行执行，操作系统调度
         self.create_pool("compute_default", "standard", max_workers=os.cpu_count())
+        self.create_pool("daemon_default", "daemon", max_workers=os.cpu_count())
 
     def create_pool(self, name: str, pool_type: str, **kwargs) -> bool:
         """创建新线程池
@@ -255,3 +289,106 @@ class ThreadExecutor(BaseModule):
             t_id: pool_name
             for t_id, (pool_name, _) in self._task_registry.items()
         }
+    def submit_daemon(
+        self,
+        fn: Callable,
+        interval: float,
+        pool_name: str = "daemon_default",
+        task_id: str = None,
+        *args, **kwargs
+    ) -> Optional[str]:
+        """提交周期性执行的守护任务
+        
+        :param fn: 要执行的任务函数
+        :param interval: 执行间隔(秒)
+        :param pool_name: 使用的线程池名称
+        :param task_id: 可选的任务ID
+        :return: 任务ID或None(失败)
+        """
+        with self._daemon_lock:
+            # 确保守护线程池存在
+            if not self._ensure_daemon_pool_exists(pool_name):
+                return None
+            
+            # 生成唯一任务ID
+            task_id = task_id or f"daemon_{time.time():.3f}:{uuid.uuid4().hex[:8]}"
+            
+            # 创建守护任务实例
+            daemon_task = DaemonTask(task_id, fn, interval, *args, **kwargs)
+            
+            # 提交到线程池
+            _, pool = self._pools[pool_name]
+            future = pool.submit(daemon_task.run)
+            
+            # 注册守护任务
+            self._daemon_tasks[task_id] = {
+                "task": daemon_task,
+                "future": future,
+                "pool": pool_name
+            }
+            
+            return task_id
+    
+    def _ensure_daemon_pool_exists(self, pool_name: str) -> bool:
+        """确保守护线程池存在，不存在则创建"""
+        if pool_name not in self._pools:
+            # 创建专用于守护任务的线程池
+            # 设置较大的max_workers以支持多个守护任务
+            return self.create_pool(pool_name, "standard", max_workers=20)
+        return True
+    
+    def stop_daemon_task(self, task_id: str, wait: bool = True) -> bool:
+        """停止守护任务
+        
+        :param task_id: 要停止的任务ID
+        :param wait: 是否等待任务完成
+        :return: 是否成功停止
+        """
+        with self._daemon_lock:
+            if task_id not in self._daemon_tasks:
+                return False
+            
+            task_info = self._daemon_tasks[task_id]
+            task_info["task"].stop()  # 设置停止标志
+            
+            if wait:
+                try:
+                    # 等待任务完成，最多等待2个间隔周期
+                    task_info["future"].result(timeout=task_info["task"].interval * 2)
+                except:
+                    pass
+            
+            # 从注册表中移除
+            del self._daemon_tasks[task_id]
+            return True
+    
+    def get_daemon_tasks(self) -> Dict[str, Dict]:
+        """获取所有守护任务的状态信息"""
+        with self._daemon_lock:
+            return {
+                task_id: {
+                    "interval": task_info["task"].interval,
+                    "last_execution": task_info["task"].last_execution,
+                    "pool": task_info["pool"],
+                    "running": not task_info["task"].stop_event.is_set()
+                }
+                for task_id, task_info in self._daemon_tasks.items()
+            }
+    
+    def shutdown_all_daemons(self):
+        """停止所有守护任务"""
+        with self._daemon_lock:
+            for task_id in list(self._daemon_tasks.keys()):
+                self.stop_daemon_task(task_id, wait=True)
+    
+    # 修改原有shutdown_pool方法，添加守护任务清理
+    def shutdown_pool(self, name: str, wait: bool = True) -> bool:
+        """关闭指定线程池（重写以清理守护任务）"""
+        # 先停止使用该线程池的所有守护任务
+        with self._daemon_lock:
+            for task_id, task_info in list(self._daemon_tasks.items()):
+                if task_info["pool"] == name:
+                    self.stop_daemon_task(task_id, wait=wait)
+        
+        # 调用原有关闭逻辑
+        return super().shutdown_pool(name, wait)

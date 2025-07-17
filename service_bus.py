@@ -1,9 +1,15 @@
+from path_cof import PROJECT_ROOT
 from typing import Any, Dict, List
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer, QMutex, QMutexLocker
 from dataclasses import dataclass
 from signal_manager import SignalManager
 from thread_executor import ThreadExecutor
 from node_info import NodeInfo
+from base_module import BaseModule
+from database.database import DatabaseManager
+from database.alembic_migrations import AutoDatabaseMigrator
+from database.write_data import WriteData 
+#from network_pro import NetworkProtocol
 # from database_manager import initialize_database
 # from sqlalchemy import create_engine
 # from sqlalchemy.orm import sessionmaker
@@ -16,7 +22,7 @@ def with_mutex(lock):
                 return func(*args, **kwargs)
         return wrapper
     return decorator
-
+""""""
 
 #  核心总线数据表结构定义
 @dataclass
@@ -83,18 +89,17 @@ class CoreServiceBus(QObject):
             "network": ServiceMetadata({"network": ["connect", "send", "receive", "disconnect"]})
         }
         self.signal_manager = SignalManager(self)  # 初始化信号管理器
-        self.thread_executor = ThreadExecutor(self)  # 初始化线程执行器
-        self.node_info = NodeInfo()  # 初始化节点信息
-        """各服务名称：
-                    信号中心：signal
-                    线程池：thread
-                    节点信息：nodeInfo
-        """
         self.__register_service(self.signal_manager.get_module_name, self.signal_manager)  # 注册信号管理器
+        self.thread_executor = ThreadExecutor(self)  # 初始化线程执行器
         self.__register_service(self.thread_executor.get_module_name, self.thread_executor)  # 注册线程执行器
-        self.__register_service(self.node_info.get_module_name, self.node_info)  # 注册节点信息
-        self.__init_health_check_signal()  # 初始化心跳监测定时器
         self.node_info = NodeInfo()  # 初始化节点信息
+        self.__register_service(self.node_info.get_module_name, self.node_info)  # 注册节点信息
+        self.database_manager = DatabaseManager()  # 初始化数据库管理器
+        self.__register_service(self.database_manager.get_module_name, self.database_manager)  # 注册数据库管理器
+        self.auto_migrator = AutoDatabaseMigrator()  # 初始化数据库迁移器
+        self.__register_service(self.auto_migrator.get_module_name, self.auto_migrator)  # 注册数据库迁移器
+        self.write_data = WriteData(self)
+        self.__register_service(self.write_data.get_module_name, self.write_data)  # 注册数据库迁移器
         self.__init_health_check_signal()
         self.plugin_bus = PluginServiceBus(self)
 
@@ -292,7 +297,8 @@ class PluginServiceBus(QObject):
         self._plugin_registry.clear()
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
+    pass
 #     # 新建测试服务类
 #     class TestServices:
 #         def e(self):
