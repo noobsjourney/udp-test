@@ -1,21 +1,18 @@
-# udp_server.py
 # 虚拟机作为服务器
-import socket
+from udp import UDPNetworkManager
+from PyQt5.QtCore import QCoreApplication
+import sys
 
-# 创建 UDP 套接字
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+def on_data_received(modename, node_id, data, source_addr):
+    print(f"[服务端] 收到数据: modename={modename}, node_id={node_id}, data={data.decode()}, 来自={source_addr}")
 
-# 绑定 IP 地址和端口
-server_address = ('0.0.0.0', 12345)
-server_socket.bind(server_address)
+def main():
+    app = QCoreApplication(sys.argv)
+    server = UDPNetworkManager(bind_host="0.0.0.0", bind_port=12345)  # 监听 12345 端口
+    server.dataReceived.connect(on_data_received)
 
-print(f"UDP 服务器正在监听 {server_address}...")
+    print(f"[服务端] 正在监听 0.0.0.0:12345")
+    sys.exit(app.exec_())
 
-while True:
-    # 接收数据
-    data, client_address = server_socket.recvfrom(1024)
-    print(f"收到来自 {client_address} 的消息: {data.decode('utf-8')}")
-
-    # 发送响应
-    response = "消息已收到，谢谢！"
-    server_socket.sendto(response.encode('utf-8'), client_address)
+if __name__ == "__main__":
+    main()
