@@ -9,6 +9,8 @@ import logging
 import queue
 import random
 
+## 1.在parse函数中，增加了对创建packet的校验逻辑（verify_checksum（））
+
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("UDPProtocol")
@@ -149,6 +151,9 @@ class UDPPacket:
                 packet.packet_num = unpacked[8]    # 分包号
                 packet.checksum = checksum
                 packet.data = data[FullPacket.HEADER_SIZE:]
+                if not packet.verify_checksum():
+                    logger.warning(f"Checksum mismatch for packet from {node_id}")
+                    return None
                 return packet
             
             elif packet_type == cls.HEADER_PACKET:
@@ -163,6 +168,9 @@ class UDPPacket:
                 packet.packet_count = unpacked[6]   # 分包数
                 packet.packet_num = unpacked[8]    # 分包号
                 packet.checksum = checksum
+                if not packet.verify_checksum():
+                    logger.warning(f"Checksum mismatch for packet from {node_id}")
+                    return None
                 return packet
             
             elif packet_type == cls.DATA_PACKET:
@@ -176,6 +184,9 @@ class UDPPacket:
                 packet.packet_num = unpacked[6]    # 分包号
                 packet.checksum = checksum
                 packet.data = data[DataPacket.HEADER_SIZE:]
+                if not packet.verify_checksum():
+                    logger.warning(f"Checksum mismatch for packet from {node_id}")
+                    return None
                 return packet
             
             elif packet_type == cls.ACK_PACKET:
@@ -189,6 +200,9 @@ class UDPPacket:
                 packet.packet_num = unpacked[5]    # 分包号
                 packet.checksum = checksum
                 print("ACK包解析",unpacked[5],unpacked[6],unpacked[4])
+                if not packet.verify_checksum():
+                    logger.warning(f"Checksum mismatch for packet from {node_id}")
+                    return None
                 return packet
             
             elif packet_type == cls.CHECK_PORT_PACKET:  # 新增端口检查包解析
@@ -201,13 +215,10 @@ class UDPPacket:
                 packet.sequence_num = unpacked[6]  # 序列号位置
                 packet.packet_num = unpacked[5]    # 包号
                 packet.checksum = checksum
+                if not packet.verify_checksum():
+                    logger.warning(f"Checksum mismatch for packet from {node_id}")
+                    return None
                 return packet
-            # 添加损坏标记
-                #packet.is_corrupted = not packet.verify_checksum()
-            
-           
-                
-            
         except struct.error as e:
             logger.error(f"Struct error: {str(e)}")
             return None
