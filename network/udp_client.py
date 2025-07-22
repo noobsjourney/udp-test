@@ -3,7 +3,7 @@
 import sys, json
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QTimer
-from udp import UDPNetworkManager
+from network.udp import UDPNetworkManager
 
 """
     实现了一个 UDP 客户端，用于与指定的服务器端进行通信。

@@ -2,7 +2,7 @@
 import sys, json
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QTimer
-from udp import UDPNetworkManager
+from network.udp import UDPNetworkManager
 
 """
     实现了一个基于 UDP 协议的服务器，运行在虚拟机上。
