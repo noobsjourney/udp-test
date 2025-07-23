@@ -167,51 +167,46 @@ if __name__ == "__main__":
     from PyQt5.QtCore import QCoreApplication
     from network.net_udp_que_client import NetUDPQue
     
-    print("客户端测试开始")
+    print("服务器端测试开始")
 
-    # 定义 nodeInfo_dict
-    nodeInfo_dict = {
-        1: {
-            "node_name": "client_node",
-            "node_id": 1001,
-            "nodeGenerateId": "client_gen_1",
-            "node_details": {
-                "hardware_info": {
-                    "cpu": "Intel Core i7",
-                    "ram": "16GB",
-                    "storage": "512GB SSD"
+    # 定义服务器返回的 nodeInfo_dict
+    server_response_dict = {
+        4: {
+            0: "信息准确无误",
+            "detailed_check": {
+                "node_name": {
+                    "status": "valid",
+                    "message": "Node name is unique."
                 },
-                "software_info": {
-                    "os": "Windows 11",
-                    "applications": ["VS Code", "PyCharm", "Chrome"]
+                "node_id": {
+                    "status": "valid",
+                    "message": "Node ID is unique."
                 }
             }
         },
-        2: {
-            "request_type": "update_node_info",
-            "new_info": {
+        5: {
+            "update_status": "success",
+            "updated_info": {
                 "node_name": "updated_client_node",
-                "description": "This node has been updated."
+                "update_time": "2025-07-23 18:00:00"
             }
         }
     }
 
+
     def handle_received_data(data_dict):
-        print("客户端接收到服务器返回的数据:")
+        print("服务器接收到客户端的数据:")
         print(data_dict)
+        # 服务器返回数据给客户端
+        server._emit_netsend("net_udp_que", server_response_dict)
 
 
     app = QCoreApplication(sys.argv)
 
-    # 初始化客户端
-    client = NetUDPQue(bind_addr=('0.0.0.0', 8888), node_id=1001)
-    client.set_destination(('192.168.230.128', 60000))  # 设置服务器地址
-
+    # 初始化服务器
+    server = NetUDPQue(bind_addr=('0.0.0.0', 60000), node_id=2001)
 
     # 连接 received 信号到处理函数
-    client.signal_manager.connect_regular_signal("net_udp_que", "received", handle_received_data)
-
-    # 发送数据
-    client._emit_netsend("net_udp_que", nodeInfo_dict)
+    server.signal_manager.connect_regular_signal("net_udp_que", "received", handle_received_data)
 
     sys.exit(app.exec_())

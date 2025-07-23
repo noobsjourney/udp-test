@@ -121,5 +121,6 @@ class UDPClient:
         sys.exit(self.app.exec_())
 
 if __name__ == "__main__":
+    # print("helllo ")
     client = UDPClient(dest_ip="192.168.230.128", dest_port=60000)
     client.run()

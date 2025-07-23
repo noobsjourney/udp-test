@@ -497,7 +497,7 @@ class UDPTransmitter(QObject):
 
         Args:
             bind_host: 绑定的主机地址，默认为'0.0.0.0'（所有网络接口）
-            bind_port: 绑定的端口号，默认为0（随机分配端口）
+            bind_port: 绑定的端口号3，默认为0（随机分配端口）
         """
         """初始化UDP传输器
 
