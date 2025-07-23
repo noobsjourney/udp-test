@@ -166,6 +166,7 @@ if __name__ == "__main__":
     import sys
     from PyQt5.QtCore import QCoreApplication
     from network.net_udp_que_client import NetUDPQue
+    from service_bus import CoreServiceBus
     
     print("客户端测试开始")
 
@@ -204,7 +205,8 @@ if __name__ == "__main__":
     app = QCoreApplication(sys.argv)
 
     # 初始化客户端
-    client = NetUDPQue(bind_addr=('0.0.0.0', 8888), node_id=1001)
+    core_service_bus = CoreServiceBus()
+    client = NetUDPQue(bind_addr=('0.0.0.0', 8888), node_id=1001,coreServiceBus=core_service_bus)
     client.set_destination(('192.168.230.128', 60000))  # 设置服务器地址
 
 

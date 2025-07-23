@@ -166,6 +166,7 @@ if __name__ == "__main__":
     import sys
     from PyQt5.QtCore import QCoreApplication
     from network.net_udp_que_client import NetUDPQue
+    from service_bus import CoreServiceBus
     
     print("服务器端测试开始")
 
@@ -204,7 +205,8 @@ if __name__ == "__main__":
     app = QCoreApplication(sys.argv)
 
     # 初始化服务器
-    server = NetUDPQue(bind_addr=('0.0.0.0', 60000), node_id=2001)
+    core_service_bus = CoreServiceBus()
+    server = NetUDPQue(bind_addr=('0.0.0.0', 60000), node_id=2001,coreServiceBus=core_service_bus)
 
     # 连接 received 信号到处理函数
     server.signal_manager.connect_regular_signal("net_udp_que", "received", handle_received_data)
