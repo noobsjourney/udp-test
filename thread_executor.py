@@ -173,7 +173,7 @@ class ThreadExecutor(BaseModule):
             self,
             fn: Callable,
             pool_name: str = "qt_default",
-            task_id: Optional[str] = None,
+            task_id:Optional[str] = None,
             *args, **kwargs
     ) -> Optional[str]:
         """提交任务到指定线程池
