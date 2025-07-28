@@ -124,9 +124,9 @@ class ThreadExecutor(BaseModule):
         # 任务注册表 {task_id: (pool_name, task)}
         self._task_registry: Dict[str, Tuple[str, Union[TaskWrapper, Future, DaemonTask]]] = {}
         self._registry_lock = threading.RLock()
-        self._init_default_pools()
         self._daemon_tasks: Dict[str, DaemonTask] = {}  # 守护任务注册表
         self._daemon_lock = threading.RLock()  # 守护任务专用锁
+        self._init_default_pools()
     
     @property
     def module_name(self) -> str:
@@ -173,6 +173,7 @@ class ThreadExecutor(BaseModule):
             self,
             fn: Callable,
             pool_name: str = "qt_default",
+            task_id: Optional[str] = None,
             *args, **kwargs
     ) -> Optional[str]:
         """提交任务到指定线程池

@@ -165,8 +165,11 @@ class NetUDPQue(BaseModule):
 if __name__ == "__main__":
     import sys
     from PyQt5.QtCore import QCoreApplication
-    from network.net_udp_que_client import NetUDPQue
     from service_bus import CoreServiceBus
+    from signal_manager import SignalManager
+    from thread_executor import ThreadExecutor
+    from node_info import NodeInfo
+    from base_module import BaseModule
     
     print("客户端测试开始")
 

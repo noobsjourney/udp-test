@@ -264,6 +264,7 @@ class NodeInfo(BaseModule):
         self.IP: str = self._get_default_ip()
         self._nodeGenerateId: str = SystemIdentity.generate_identity()
         self._initialize()
+    @property
     def module_name(self) -> str:
         return "nodeInfo"
     def _initialize(self):

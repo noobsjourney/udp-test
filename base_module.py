@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 from abc import ABCMeta, abstractmethod
 from typing_extensions import final
 import weakref
